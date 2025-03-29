@@ -116,7 +116,7 @@
       <button type="button" class="btn btn-link btn-custom btn-custom-sm" data-toggle="modal" data-target="#TargetModal"
         id="targetModeButton">Target mode</button>
       <button type="button" class="btn btn-link btn-custom btn-custom-sm" data-toggle="modal" data-target="#shareModal"
-        id="targetModeButton">Share match Code</button>
+        id="shareMatchCodeButton">Share match Code</button>
     </div>
 
     <div class="modal fade" id="myModal" role="dialog">
@@ -212,9 +212,15 @@
             <button type="button" class="btn close" data-dismiss="modal">&times;</button>
           </div>
           <div class="modal-body" id="shareModalBody">
-            <button type="button" class="btn btn-default" onclick="shareModeStart()"><u>Turn on share mode?</u></button>
+            <p>Click the button below to generate a shareable link:</p>
+            <button type="button" class="btn btn-primary" onclick="generateShareLink()">Generate Link</button>
+            <div id="shareableLinkContainer" style="display: none; margin-top: 10px;">
+              <label for="shareableLink">Share this link:</label>
+              <input type="text" class="form-control" id="shareableLink" readonly>
+            </div>
           </div>
           <div class="modal-footer" id="shareModalFooter">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
