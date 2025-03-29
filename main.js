@@ -1,4 +1,5 @@
 var scoreboard = [[], [0]]; //scoreboard[<over_no>][0] counts wide runs
+var scoreboardInfo = {}; // To store batting and bowler info per over
 var ball_no = 1; // Ball number will start from 1
 var over_no = 1; // Over number will start from 1
 var runs = 0;
@@ -49,10 +50,7 @@ function init() {
 	console.log(urlParams.get("debug"));
 	if (urlParams.get("debug") == null || urlParams.get("debug") != "true")
 		$("#messages").hide();
-	// const queryString = window.location.search;
-	// const urlParams = new URLSearchParams(queryString);
-	// console.log(urlParams.get("matchCode"));
-	// console.log(document.location.origin);
+	update_scoreboard(); // Initial call to display scoreboard (empty initially)
 }
 
 function shareModeStart() {
@@ -93,10 +91,18 @@ function play_ball(run, score = 1) {
 		update_runboard();
 		ball_no++;
 		if (ball_no >= 7) {
+			scoreboardInfo[over_no] = scoreboardInfo[over_no] || {}; // Initialize if not exists
+			scoreboardInfo[over_no]['batting'] = $("#battingTeam").val();
+			scoreboardInfo[over_no]['bowler'] = $("#bowlerName").val();
+
 			ball_no = 1;
 			over_no++;
 			scoreboard[over_no] = [];
 			scoreboard[over_no][0] = 0; //Wide bowls counter
+
+			// Optionally clear the input fields after moving to the next over
+			$("#battingTeam").val('');
+			$("#bowlerName").val('');
 		}
 	}
 	update_score();
@@ -153,24 +159,20 @@ function change_score() {
 }
 
 function update_scoreboard() {
-	// Updates the table in the modal which appears when the scoreboard button is pressed.
-	var table = "";
-	for (i = 1; i <= over_no; i++) {
-		table = table + "<tr>";
-		table += "<td>" + i.toString() + "</td>";
-		table +=
-			"<td>" +
-			scoreboard[i].slice(1, 7).join(" - ") +
-			" (" +
-			scoreboard[i][0].toString() +
-			")" +
-			"</td>";
-		table = table + "</tr>";
+	var tableBody = $("#scoreboard-body");
+	tableBody.empty(); // Clear the previous table body
+
+	for (var i = 1; i <= over_no; i++) {
+		var row = $("<tr></tr>");
+
+		var battingCell = $("<td></td>").text(scoreboardInfo[i] ? scoreboardInfo[i]['batting'] : '');
+		var overCell = $("<td></td>").text(i.toString());
+		var scoreCell = $("<td></td>").text(scoreboard[i] ? scoreboard[i].slice(1, 7).join(" - ") + " (" + scoreboard[i][0].toString() + ")" : '');
+		var bowlerCell = $("<td></td>").text(scoreboardInfo[i] ? scoreboardInfo[i]['bowler'] : '');
+
+		row.append(battingCell, overCell, scoreCell, bowlerCell);
+		tableBody.append(row);
 	}
-	updateHtml(
-		"#scoreboard",
-		"<tr><th>Over</th><th>Score (Extras)</th></tr>" + table
-	);
 }
 
 function update_score() {
@@ -178,11 +180,13 @@ function update_score() {
 	let wickets = 0;
 
 	for (i = 1; i <= over_no; i++) {
-		let numOr0 = (n) => (n == "+" ? 1 : isNaN(n) ? 0 : n);
-		score += scoreboard[i].reduce((a, b) => numOr0(a) + numOr0(b));
-		scoreboard[i].forEach((element) => {
-			if (element == "W") wickets++;
-		});
+		if (scoreboard[i]) {
+			let numOr0 = (n) => (n == "+" ? 1 : isNaN(n) ? 0 : n);
+			score += scoreboard[i].reduce((a, b) => numOr0(a) + numOr0(b));
+			scoreboard[i].forEach((element) => {
+				if (element == "W") wickets++;
+			});
+		}
 	}
 	// console.log(wickets);
 	runs = score;
@@ -293,19 +297,6 @@ function updateHtml(eleId, newHtml) {
 				update: { eleId: eleId, newHtml: newHtml },
 			})
 		);
-	// publishMessage(
-	// 	JSON.stringify({
-	// 		scoreboard: scoreboard,
-	// 		ball_no: ball_no,
-	// 		over_no: over_no,
-	// 		runs: runs,
-	// 		edited: edited,
-	// 		isNoBall: isNoBall,
-	// 		isTargetMode: isTargetMode,
-	// 		targetRuns: targetRuns,
-	// 		targetOvers: targetOvers,
-	// 	})
-	// );
 }
 
 function sendInitVariables() {
@@ -328,6 +319,18 @@ function sendInitVariables() {
 		JSON.stringify({
 			init: vars,
 			isTargetMode: isTargetMode,
+			scoreboardInfo: scoreboardInfo // Send scoreboardInfo as well
 		})
 	);
 }
+
+window.addEventListener('beforeunload', function (event) {
+    // Check if any runs or wickets have been recorded
+    if (runs > 0 || wickets > 0 || over_no > 1 || (over_no === 1 && ball_no > 1)) {
+        // If there's a score, show the confirmation dialog
+        event.preventDefault();
+        event.returnValue = ''; // Required for some older browsers
+        return 'Are you sure you want to leave? Your score data will be lost.';
+    }
+    // If no score is recorded, allow the page to unload without confirmation
+});
