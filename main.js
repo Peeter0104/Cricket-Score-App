@@ -1,5 +1,5 @@
 var scoreboard = [[], [0]]; //scoreboard[<over_no>][0] counts wide runs
-var scoreboardInfo = {}; // To store batting and bowler info per over
+var scoreboardInfo = {}; // To store team and bowler info per over
 var ball_no = 1; // Ball number will start from 1
 var over_no = 1; // Over number will start from 1
 var runs = 0;
@@ -92,7 +92,7 @@ function play_ball(run, score = 1) {
 		ball_no++;
 		if (ball_no >= 7) {
 			scoreboardInfo[over_no] = scoreboardInfo[over_no] || {}; // Initialize if not exists
-			scoreboardInfo[over_no]['batting'] = $("#battingTeam").val();
+			scoreboardInfo[over_no]['team'] = $("#teamName").val();
 			scoreboardInfo[over_no]['bowler'] = $("#bowlerName").val();
 
 			ball_no = 1;
@@ -101,7 +101,7 @@ function play_ball(run, score = 1) {
 			scoreboard[over_no][0] = 0; //Wide bowls counter
 
 			// Optionally clear the input fields after moving to the next over
-			$("#battingTeam").val('');
+			$("#teamName").val('');
 			$("#bowlerName").val('');
 		}
 	}
@@ -165,12 +165,12 @@ function update_scoreboard() {
 	for (var i = 1; i <= over_no; i++) {
 		var row = $("<tr></tr>");
 
-		var battingCell = $("<td></td>").text(scoreboardInfo[i] ? scoreboardInfo[i]['batting'] : '');
+		var teamCell = $("<td></td>").text(scoreboardInfo[i] ? scoreboardInfo[i]['team'] : '');
 		var overCell = $("<td></td>").text(i.toString());
 		var scoreCell = $("<td></td>").text(scoreboard[i] ? scoreboard[i].slice(1, 7).join(" - ") + " (" + scoreboard[i][0].toString() + ")" : '');
 		var bowlerCell = $("<td></td>").text(scoreboardInfo[i] ? scoreboardInfo[i]['bowler'] : '');
 
-		row.append(battingCell, overCell, scoreCell, bowlerCell);
+		row.append(teamCell, overCell, scoreCell, bowlerCell);
 		tableBody.append(row);
 	}
 }
@@ -295,6 +295,7 @@ function updateHtml(eleId, newHtml) {
 		publishMessage(
 			JSON.stringify({
 				update: { eleId: eleId, newHtml: newHtml },
+				scoreboardInfo: scoreboardInfo // Send scoreboardInfo on every update
 			})
 		);
 }
