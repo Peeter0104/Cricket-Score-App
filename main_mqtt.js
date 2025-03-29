@@ -53,7 +53,7 @@ function startConnect(_topic) {
 
 function onConnect() {
 	document.getElementById("messages").innerHTML +=
-		"<span> Subscribing to topic " + topic + "</span><br>";
+		"<span> Subscribing to topic " + topic + "origin</span><br>";
 
 	client.subscribe("matchCodeWatch" + topic + "origin");
 }
@@ -81,20 +81,11 @@ function onMessageArrived(message) {
 	}
 }
 
-// function startDisconnect() {
-// 	client.disconnect();
-// 	document.getElementById("messages").innerHTML +=
-// 		"<span> Disconnected. </span><br>";
-// }
-
 function publishMessage(msg) {
 	if (!isStartConnectDone) return;
 
-	// msg = document.getElementById("Message").value;
-	// topic = document.getElementById("topic_p").value;
-
 	Message = new Paho.MQTT.Message(msg);
-	Message.destinationName = "matchCodeWatch" + topic;
+	Message.destinationName = "matchCodeWatch" + topic + "origin";
 
 	client.send(Message);
 	document.getElementById("messages").innerHTML +=
