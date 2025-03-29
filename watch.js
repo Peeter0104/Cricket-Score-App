@@ -1,4 +1,5 @@
 var scoreboard = [[], [0]]; //scoreboard[<over_no>][0] counts wide runs
+var scoreboardInfo = {}; // To store batting and bowler info per over
 var ball_no = 1; // Ball number will start from 1
 var over_no = 1; // Over number will start from 1
 var runs = 0;
@@ -16,7 +17,6 @@ $(document).ready(function () {
 		console.log(urlParams.get("matchCode"));
 		startConnect(urlParams.get("matchCode")); //TODO
 	} else {
-		// $('#matchCodeInput').modal('show');
 		let myModal = new bootstrap.Modal(
 			document.getElementById("shareModal"),
 			{}
@@ -95,15 +95,20 @@ function onMessageArrived(message) {
 	} else if (payload.init != undefined) {
 		showConnected();
 		initHtml(payload);
+		if (payload.scoreboardInfo) {
+			scoreboardInfo = payload.scoreboardInfo;
+			updateScoreboard();
+		}
 	} else if (payload.isTargetMode != undefined)
 		setTargetMode(payload.isTargetMode);
+	else if (payload.scoreboardInfo != undefined) {
+		scoreboardInfo = payload.scoreboardInfo;
+		updateScoreboard();
+	}
 }
 
 function publishMessage(msg) {
 	if (!isStartConnectDone) return;
-
-	// msg = document.getElementById("Message").value;
-	// topic = document.getElementById("topic_p").value;
 
 	Message = new Paho.MQTT.Message(msg);
 	Message.destinationName = "matchCodeWatch" + topic + "origin";
@@ -118,7 +123,6 @@ function updateHtml(eleId, newHtml) {
 }
 
 function initHtml(payload) {
-	// console.log(JSON.parse(initVars));
 	for (let keys in payload.init) {
 		$(keys).html(payload.init[keys]);
 	}
@@ -138,4 +142,22 @@ function showConnected() {
 	setTimeout(function () {
 		$("#alert").hide();
 	}, 4000);
+}
+
+function updateScoreboard() {
+	var tableBody = $("#scoreboard-body");
+	tableBody.empty();
+
+	for (var i = 1; i <= Object.keys(scoreboardInfo).length; i++) {
+		if (scoreboardInfo[i]) {
+			var row = $("<tr></tr>");
+			var battingCell = $("<td></td>").text(scoreboardInfo[i]['batting'] || '');
+			var overCell = $("<td></td>").text(i.toString());
+			var score = scoreboard[i] ? scoreboard[i].slice(1, 7).join(" - ") + " (" + scoreboard[i][0].toString() + ")" : '';
+			var scoreCell = $("<td></td>").text(score);
+			var bowlerCell = $("<td></td>").text(scoreboardInfo[i]['bowler'] || '');
+			row.append(battingCell, overCell, scoreCell, bowlerCell);
+			tableBody.append(row);
+		}
+	}
 }
