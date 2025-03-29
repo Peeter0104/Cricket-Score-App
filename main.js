@@ -19,17 +19,18 @@ let host = "test.mosquitto.org";
 let port = 8080;
 
 $(document).ready(function () {
-  $("#run_dot").on("click", function (event) { if (!isShareMode) play_ball("D"); });
-  $("#run_1").on("click", function (event) { if (!isShareMode) play_ball(1); });
-  $("#run_2").on("click", function (event) { if (!isShareMode) play_ball(2); });
-  $("#run_3").on("click", function (event) { if (!isShareMode) play_ball(3); });
-  $("#run_wide").on("click", function (event) { if (!isShareMode) play_ball("+"); });
-  $("#run_no_ball").on("click", function (event) { if (!isShareMode) play_ball("NB"); });
-  $("#run_4").on("click", function (event) { if (!isShareMode) play_ball(4); });
-  $("#run_6").on("click", function (event) { if (!isShareMode) play_ball(6); });
-  $("#run_W").on("click", function (event) { if (!isShareMode) play_ball("W"); });
-  $("#scoreboard-btn").on("click", function (event) { update_scoreboard(); });
-  $("#shareMatchCodeButton").on("click", function (event) { generateShareLink(); });
+  console.log("Document ready in main.js"); // ADDED LOG
+  $("#run_dot").on("click", function (event) { console.log("Dot button clicked"); if (!isShareMode) play_ball("D"); }); // ADDED LOG
+  $("#run_1").on("click", function (event) { console.log("1 button clicked"); if (!isShareMode) play_ball(1); }); // ADDED LOG
+  $("#run_2").on("click", function (event) { console.log("2 button clicked"); if (!isShareMode) play_ball(2); }); // ADDED LOG
+  $("#run_3").on("click", function (event) { console.log("3 button clicked"); if (!isShareMode) play_ball(3); }); // ADDED LOG
+  $("#run_wide").on("click", function (event) { console.log("Wide button clicked"); if (!isShareMode) play_ball("+"); }); // ADDED LOG
+  $("#run_no_ball").on("click", function (event) { console.log("No ball button clicked"); if (!isShareMode) play_ball("NB"); }); // ADDED LOG
+  $("#run_4").on("click", function (event) { console.log("4 button clicked"); if (!isShareMode) play_ball(4); }); // ADDED LOG
+  $("#run_6").on("click", function (event) { console.log("6 button clicked"); if (!isShareMode) play_ball(6); }); // ADDED LOG
+  $("#run_W").on("click", function (event) { console.log("Wicket button clicked"); if (!isShareMode) play_ball("W"); }); // ADDED LOG
+  $("#scoreboard-btn").on("click", function (event) { console.log("Scoreboard button clicked"); update_scoreboard(); }); // ADDED LOG
+  $("#shareMatchCodeButton").on("click", function (event) { console.log("Share button clicked"); generateShareLink(); }); // ADDED LOG
   init();
 });
 
@@ -47,7 +48,11 @@ function disableEditing() { /* ... */ }
 function generateShareLink() { /* ... */ }
 
 function play_ball(run) {
-  if (isShareMode) return;
+  console.log("play_ball called with run:", run); // ADDED LOG
+  if (isShareMode) {
+    console.log("isShareMode is true, returning from play_ball"); // ADDED LOG
+    return;
+  }
 
   let scoreEffect = 0;
   if (run === "+") { runs++; scoreboard[over_no][0] = (scoreboard[over_no][0] || 0) + 1; scoreEffect = 1; publishUpdate({ type: "run", value: run }); }
@@ -106,13 +111,123 @@ function update_scoreboard() {
   else { updateHtml("#scoreboard", $("#scoreboard").prop('outerHTML'), true); }
 }
 
-function update_score() { /* ... */ }
-function back_button() { /* ... */ }
-function noBall(is_NoBall) { /* ... */ }
-function setTarget(isTargetModeOn = true) { /* ... */ }
-function updateTarget() { /* ... */ }
-function updateHtml(eleId, newHtml, shouldPublish = true) { /* ... */ }
-function sendInitVariables() { /* ... */ }
-function onConnect() { /* ... */ }
-function onConnectionLost(responseObject) { /* ... */ }
-function onMessageArrived(message) { /* ... */ }
+function update_score() {
+  runs = 0;
+  wickets = 0;
+  for (let i = 1; i < scoreboard.length; i++) {
+    if (scoreboard[i]) {
+      runs += scoreboard[i].slice(1).reduce((sum, val) => sum + (Number.isInteger(val) ? val : 0), 0) + (scoreboard[i][0] || 0);
+      wickets += scoreboard[i].slice(1).filter(val => val === "W").length;
+    }
+  }
+  updateHtml("#run", runs);
+  updateHtml("#wickets", wickets);
+}
+
+function back_button() {
+  if (over_no > 1 || ball_no > 1) {
+    if (ball_no === 1) {
+      over_no--;
+      ball_no = scoreboard[over_no].length;
+    } else {
+      ball_no--;
+    }
+    const lastBall = scoreboard[over_no][ball_no];
+    if (lastBall === "W") {
+      wickets--;
+    } else if (Number.isInteger(lastBall)) {
+      runs -= lastBall;
+    }
+    scoreboard[over_no][ball_no] = undefined;
+    update_score();
+    update_scoreboard();
+    update_runboard();
+    publishUpdate({ type: "undo" });
+  }
+}
+
+function noBall(is_NoBall) {
+  isNoBall = is_NoBall;
+  if (isNoBall) {
+    $("#no-ball-warning").show();
+  } else {
+    $("#no-ball-warning").hide();
+  }
+}
+
+function setTarget(isTargetModeOn = true) {
+  isTargetMode = isTargetModeOn;
+  if (isTargetMode) {
+    targetRuns = parseInt($("#targetRuns").val());
+    targetOvers = parseInt($("#targetOvers").val());
+    $("#targetBoard").show();
+    updateTarget();
+  } else {
+    $("#targetBoard").hide();
+    targetRuns = -1;
+    targetOvers = -1;
+    publishUpdate({ type: "targetUpdate", isTargetMode: false, targetRuns: -1, targetOvers: -1 });
+  }
+  publishUpdate({ type: "targetUpdate", isTargetMode: isTargetMode, targetRuns: targetRuns, targetOvers: targetOvers });
+}
+
+function updateTarget() {
+  if (isTargetMode && targetRuns !== -1 && targetOvers !== -1) {
+    const runsRequired = targetRuns - runs;
+    const ballsBowled = (over_no - 1) * 6 + (ball_no - 1);
+    const ballsRemaining = targetOvers * 6 - ballsBowled;
+    $("#targetRunsRequired").text(runsRequired > 0 ? runsRequired : 0);
+    $("#targetOversLeft").text(Math.floor(ballsRemaining / 6) + "." + (ballsRemaining % 6));
+  }
+}
+
+function updateHtml(eleId, newHtml, shouldPublish = true) {
+  $(eleId).html(newHtml);
+  if (isShareMode && shouldPublish) {
+    publishUpdate({ type: "updateHtml", id: eleId.substring(1), html: newHtml });
+  }
+}
+
+function sendInitVariables() {
+  const state = {
+    runs: runs,
+    wickets: wickets,
+    overBallDisplay: `${over_no - 1}.${ball_no - 1}`,
+    scoreboard: scoreboard,
+    scoreboardInfo: scoreboardInfo,
+    isTargetMode: isTargetMode,
+    targetRuns: targetRuns,
+    targetOvers: targetOvers,
+    ballButtons: getBallButtonStates()
+  };
+  publishMessage(JSON.stringify({ type: "init", state: state }));
+}
+
+function getBallButtonStates() {
+  const states = {};
+  for (let i = 1; i <= 6; i++) {
+    states[`ball_no_${i}`] = $(`#ball_no_${i}`).text();
+  }
+  return states;
+}
+
+function onConnect() {
+  console.log("Connected to MQTT");
+  isStartConnectDone = true;
+  sendInitVariables();
+}
+
+function onConnectionLost(responseObject) {
+  console.log("Connection Lost: " + responseObject.errorMessage);
+}
+
+function onMessageArrived(message) {
+  // Handle messages if needed in main.js
+}
+
+function publishUpdate(payload) {
+  if (isShareMode && isStartConnectDone && client && client.isConnected()) {
+    payload.matchCode = currentMatchCode;
+    client.send(new Paho.MQTT.Message(JSON.stringify(payload)));
+  }
+}
